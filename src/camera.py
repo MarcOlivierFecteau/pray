@@ -45,6 +45,8 @@ class Camera:
     lookfrom: Point3 = Point3.zero()
     lookat: Point3 = Point3(0, 0, -1)
     up_direction: Vector3 = Vector3(0, 1, 0)
+    defocus_angle: float = 0  # Variation angle of rays through each pixel (deg)
+    focus_distance: float = 10.0  # Distance from camera to plane of perfect focus (m)
 
     __image_height: int  # px
     __center: Point3
@@ -55,6 +57,8 @@ class Camera:
     __u: Vector3
     __v: Vector3
     __w: Vector3
+    __defocus_disk_u: Vector3
+    __defocus_disk_v: Vector3
 
     def __init__(self):
         pass
@@ -88,10 +92,9 @@ class Camera:
         self.__center = self.lookfrom
 
         # Determine viewport dimensions
-        focal_length = (self.lookfrom - self.lookat).mag
         theta = math.radians(self.vertical_fov)
         h = math.tan(theta / 2)
-        viewport_height = 2 * h * focal_length
+        viewport_height = 2 * h * self.focus_distance
         viewport_width = viewport_height * (self.image_width / self.__image_height)
 
         # Calculate the basis unit vectors for the camera coordinate frame
@@ -109,11 +112,21 @@ class Camera:
 
         # Calculate the location of the upper left pixel
         viewport_upper_left = (
-            self.__center - (focal_length * self.__w) - viewport_u / 2 - viewport_v / 2
+            self.__center
+            - (self.focus_distance * self.__w)
+            - viewport_u / 2
+            - viewport_v / 2
         )
         self.__pixel00_location = viewport_upper_left + 0.5 * (
             self.__pixel_delta_u + self.__pixel_delta_v
         )
+
+        # Calculate the camera defocus disk basic vectors
+        defocus_radius = self.focus_distance * math.tan(
+            math.radians(self.defocus_angle / 2)
+        )
+        self.__defocus_disk_u = self.__u * defocus_radius
+        self.__defocus_disk_v = self.__v * defocus_radius
 
     def __sample_square(self):
         """
@@ -121,10 +134,17 @@ class Camera:
         """
         return Vector3(random.random() - 0.5, random.random() - 0.5, 0)
 
+    def __defocus_disk_sample(self):
+        """
+        Returns a random point in the camera defocus disk.
+        """
+        p = Vector3.random_in_unit_disk()
+        return self.__center + p.x * self.__defocus_disk_u + p.y * self.__defocus_disk_v
+
     def __get_ray(self, i: int, j: int):
         """
-        Construct a camera ray originating from the origin and directed at a randomly sampled
-        point around the pixel location (i, j).
+        Construct a camera ray originating from the defocus disk and directed at a randomly
+        sampled point around the pixel location (i, j).
         """
         offset = self.__sample_square()
         pixel_sample = (
@@ -132,7 +152,9 @@ class Camera:
             + ((i + offset.x) * self.__pixel_delta_u)
             + ((j + offset.x) * self.__pixel_delta_v)
         )
-        ray_origin = self.__center
+        ray_origin = (
+            self.__center if self.defocus_angle <= 0.0 else self.__defocus_disk_sample()
+        )
         ray_direction = pixel_sample - ray_origin
 
         return Ray(ray_origin, ray_direction)

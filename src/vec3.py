@@ -127,6 +127,13 @@ class Vector3:
             return -on_unit_sphere
 
     @staticmethod
+    def random_in_unit_disk():
+        while True:
+            p = Vector3(-1.0 + 2.0 * random.random(), -1.0 + 2.0 * random.random(), 0.0)
+            if p.mag2 < 1:
+                return p
+
+    @staticmethod
     def reflect(v: Vector3, normal: Vector3):
         return v - 2 * (v @ normal) * normal
 
