@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
-from typing import TypeAlias
 import math
+import random
+from typing import TypeAlias
 
 
 class Vector3:
@@ -97,6 +98,38 @@ class Vector3:
             c = float(c)
         return Vector3(c, c, c)
 
+    @staticmethod
+    def random():
+        return Vector3(random.random(), random.random(), random.random())
+
+    @staticmethod
+    def randrange(min: float, max: float):
+        range = max - min
+        return Vector3(
+            min + range * random.random(),
+            min + range * random.random(),
+            min + range * random.random(),
+        )
+
+    @staticmethod
+    def random_unit():
+        while True:
+            v = Vector3.randrange(-1.0, 1.0)
+            if 1e-9 <= v.mag2 <= 1:
+                return v.unit
+
+    @staticmethod
+    def random_on_hemisphere(normal: Vector3):
+        on_unit_sphere = Vector3.random_unit()
+        if on_unit_sphere @ normal > 0:
+            return on_unit_sphere
+        else:
+            return -on_unit_sphere
+
+    @staticmethod
+    def reflect(v: Vector3, normal: Vector3):
+        return v - 2 * (v @ normal) * normal
+
     @property
     def magnitude_squared(self):
         return self.x**2 + self.y**2 + self.z**2
@@ -123,20 +156,10 @@ class Vector3:
             self.x * v.y - self.y * v.x,
         )
 
+    def near_zero(self):
+        epsilon = 1e-8
+        return abs(self.x) < epsilon and abs(self.y) < epsilon and abs(self.z) < epsilon
+
 
 Color: TypeAlias = Vector3  # Does not eliminate the foot-guns
 Point3: TypeAlias = Vector3
-
-
-def write_color(out, color: Color):
-    """
-    Write a single pixel's value to an output following the P3 PPM format.
-
-    Args:
-        out: An output stream.
-        color (Color): The RGB component values ([0, 1]).
-    """
-    r = int(255.999 * color.x)
-    g = int(255.999 * color.y)
-    b = int(255.999 * color.z)
-    out.write(f"{r} {g} {b}\n")

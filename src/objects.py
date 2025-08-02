@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import math
 
 from ray import Ray
-from vec3 import Vector3, Point3
+from vec3 import Vector3, Point3, Color
 
 
 class Interval:
@@ -21,9 +21,22 @@ class Interval:
     def surrounds(self, x: float):
         return self.min < x < self.max
 
+    def clamp(self, x: float):
+        if x < self.min:
+            return self.min
+        elif x > self.max:
+            return self.max
+        else:
+            return x
+
 
 empty = Interval(math.inf, -math.inf)
 universe = Interval(-math.inf, math.inf)
+
+
+# To remove the 'undefined' warning in HitRecord
+class Material(ABC):  # type: ignore
+    pass
 
 
 class HitRecord:
@@ -31,6 +44,7 @@ class HitRecord:
     _normal: Vector3
     _t: float
     _front_face: bool
+    _material: Material
 
     def __init__(self):
         self._p = Point3.splat(math.inf)
@@ -61,6 +75,16 @@ class HitRecord:
     def normal(self):
         return self._normal
 
+    @property
+    def material(self):
+        return self._material
+
+    @material.setter
+    def material(self, material: Material):
+        self._material = material
+
+    mat = material
+
     def set_face_normal(self, ray: Ray, outward_normal: Vector3):
         """
         Sets the hit record normal vector. `outward_normal` must be a unit vector.
@@ -69,6 +93,43 @@ class HitRecord:
 
         self._front_face = ray.direction @ outward_normal < 0
         self._normal = outward_normal if self._front_face else -outward_normal
+
+
+class Material(ABC):
+    @abstractmethod
+    def scatter(self, ray: Ray, record: HitRecord) -> tuple[bool, Ray, Color]:
+        return (False, Ray(Point3.zero(), Vector3.zero()), Color.zero())
+
+
+class Lambertian(Material):
+    __albedo: Color
+
+    def __init__(self, albedo: Color):
+        self.__albedo = albedo
+
+    def scatter(self, ray: Ray, record: HitRecord):
+        scatter_direction = record.normal + Vector3.random_unit()
+
+        # Catch degenerate scatter direction
+        if scatter_direction.near_zero():
+            scatter_direction = record.normal
+
+        scattered = Ray(record.p, scatter_direction)
+        attenuation = self.__albedo
+        return (True, scattered, attenuation)
+
+
+class Metal(Material):
+    __albedo: Color
+
+    def __init__(self, albedo: Color):
+        self.__albedo = albedo
+
+    def scatter(self, ray: Ray, record: HitRecord):
+        reflected = Vector3.reflect(ray.direction, record.normal)
+        scattered = Ray(record.p, reflected)
+        attenuation = self.__albedo
+        return (True, scattered, attenuation)
 
 
 class Hittable(ABC):
@@ -82,12 +143,14 @@ class Hittable(ABC):
 class Sphere(Hittable):
     __center: Point3
     __radius: float
+    __material: Material
 
-    def __init__(self, center: Point3, radius: float):
+    def __init__(self, center: Point3, radius: float, material: Material):
         assert isinstance(center, Point3)
         assert isinstance(radius, float)
         self.__center = center
         self.__radius = max(radius, 0.0)
+        self.__material = material
 
     def hit(self, ray: Ray, ray_t: Interval, record: HitRecord):
         object_center = self.__center - ray.origin
@@ -112,6 +175,7 @@ class Sphere(Hittable):
         record.p = ray.at(root)
         outward_normal = (record.p - self.__center) / self.__radius
         record.set_face_normal(ray, outward_normal.unit)
+        record.material = self.__material  # type: ignore
 
         return (True, record)
 
