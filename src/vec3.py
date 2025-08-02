@@ -6,50 +6,54 @@ import random
 from typing import TypeAlias
 
 
+def random_float(min: float = 0.0, max: float = 1.0):
+    range = max - min
+    return min + range * random.random()
+
+
 class Vector3:
-    e: list[float] = []
+    components: list[float] = []
 
     def __init__(self, x: float, y: float, z: float):
-        self.e = [float(x), float(y), float(z)]
+        assert [isinstance(e, float) for e in [x, y, z]]
+        self.components = [x, y, z]
+
+    @property
+    def _(self):
+        return self.components
 
     @property
     def x(self):
-        return self.e[0]
+        return self.components[0]
 
     @property
     def y(self):
-        return self.e[1]
+        return self.components[1]
 
     @property
     def z(self):
-        return self.e[2]
+        return self.components[2]
 
     def __repr__(self):
         return f"Vector3({self.x}, {self.y}, {self.z})"
 
     def __getitem__(self, i):
-        return self.e[i]
+        return self.components[i]
 
     def __neg__(self):
         return Vector3(-self.x, -self.y, -self.z)
 
     def __add__(self, v: Vector3):
-        if not isinstance(v, Vector3):
-            raise TypeError
-        x = self.x + v.x
-        y = self.y + v.y
-        z = self.z + v.z
-        return Vector3(x, y, z)
+        cls = type(self)
+        assert isinstance(v, Vector3)
+        return cls(self.x + v.x, self.y + v.y, self.z + v.z)
 
     def __sub__(self, v: Vector3):
-        if not isinstance(v, Vector3):
-            raise TypeError
-        x = self.x - v.x
-        y = self.y - v.y
-        z = self.z - v.z
-        return Vector3(x, y, z)
+        assert isinstance(v, Vector3)
+        return Vector3(self.x - v.x, self.y - v.y, self.z - v.z)
 
     def __mul__(self, v: Vector3 | float | int):
+        cls = type(self)
         if isinstance(v, int):
             v = float(v)
         if isinstance(v, Vector3):
@@ -62,7 +66,7 @@ class Vector3:
             z = self.z * v
         else:
             raise TypeError
-        return Vector3(x, y, z)
+        return cls(x, y, z)
 
     __rmul__ = __mul__
 
@@ -84,44 +88,40 @@ class Vector3:
     def __matmul__(self, v: Vector3):
         return self.x * v.x + self.y * v.y + self.z * v.z
 
-    @staticmethod
-    def zero():
-        return Vector3(0, 0, 0)
+    @classmethod
+    def zero(cls):
+        return cls(0.0, 0.0, 0.0)
 
-    @staticmethod
-    def one():
-        return Vector3(1, 1, 1)
+    @classmethod
+    def one(cls):
+        return cls(1.0, 1.0, 1.0)
 
-    @staticmethod
-    def splat(c: float):
-        if isinstance(c, int):
-            c = float(c)
-        return Vector3(c, c, c)
+    @classmethod
+    def splat(cls, c: float):
+        assert isinstance(c, float)
+        return cls(c, c, c)
 
-    @staticmethod
-    def random():
-        return Vector3(random.random(), random.random(), random.random())
+    @classmethod
+    def random(cls):
+        return cls(random.random(), random.random(), random.random())
 
-    @staticmethod
-    def randrange(min: float, max: float):
-        range = max - min
-        return Vector3(
-            min + range * random.random(),
-            min + range * random.random(),
-            min + range * random.random(),
+    @classmethod
+    def randrange(cls, min: float, max: float):
+        return cls(
+            random_float(min, max), random_float(min, max), random_float(min, max)
         )
 
     @staticmethod
     def random_unit():
         while True:
             v = Vector3.randrange(-1.0, 1.0)
-            if 1e-9 <= v.mag2 <= 1:
+            if 1e-9 <= v.mag2 <= 1.0:
                 return v.unit
 
     @staticmethod
     def random_on_hemisphere(normal: Vector3):
         on_unit_sphere = Vector3.random_unit()
-        if on_unit_sphere @ normal > 0:
+        if on_unit_sphere @ normal > 0.0:
             return on_unit_sphere
         else:
             return -on_unit_sphere
@@ -129,8 +129,8 @@ class Vector3:
     @staticmethod
     def random_in_unit_disk():
         while True:
-            p = Vector3(-1.0 + 2.0 * random.random(), -1.0 + 2.0 * random.random(), 0.0)
-            if p.mag2 < 1:
+            p = Vector3(random_float(-1.0, 1.0), random_float(-1.0, 1.0), 0.0)
+            if p.mag2 < 1.0:
                 return p
 
     @staticmethod
@@ -154,14 +154,13 @@ class Vector3:
 
     @property
     def unit(self):
-        v = Vector3(*self.e)
+        v = Vector3(*self.components)
         return v / v.magnitude
 
     # Aliases
     mag2 = magnitude_squared
     mag = magnitude
     length = magnitude
-    abs = magnitude
 
     def cross(self, v: Vector3):
         return Vector3(
@@ -175,5 +174,4 @@ class Vector3:
         return abs(self.x) < epsilon and abs(self.y) < epsilon and abs(self.z) < epsilon
 
 
-Color: TypeAlias = Vector3  # Does not eliminate the foot-guns
 Point3: TypeAlias = Vector3
