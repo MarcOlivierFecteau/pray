@@ -36,10 +36,15 @@ def write_color(out: TextIO, color: Color):
 
 
 class Camera:
-    aspect_ratio = 1.0  # image_width / image_height
+    aspect_ratio: float = 1.0  # image_width / image_height
     image_width: int = 100  # px
     samples_per_pixel: int = 10  # Random samples for each pixel
-    max_depth = 10  # Maximum number of ray bounces into scene
+    max_depth: int = 10  # Maximum number of ray bounces into scene
+    vertical_fov: float = 90.0  # deg
+    horizontal_fov: float = 90.0  # deg
+    lookfrom: Point3 = Point3.zero()
+    lookat: Point3 = Point3(0, 0, -1)
+    up_direction: Vector3 = Vector3(0, 1, 0)
 
     __image_height: int  # px
     __center: Point3
@@ -47,6 +52,9 @@ class Camera:
     __pixel_delta_u: Vector3
     __pixel_delta_v: Vector3
     __pixel_samples_scale: float  # Color scale factor for a sum of pizel samples
+    __u: Vector3
+    __v: Vector3
+    __w: Vector3
 
     def __init__(self):
         pass
@@ -77,16 +85,23 @@ class Camera:
 
         self.__pixel_samples_scale = 1 / self.samples_per_pixel
 
-        self.__center = Point3.zero()
+        self.__center = self.lookfrom
 
         # Determine viewport dimensions
-        focal_length = 1.0  # m
-        viewport_height = 2.0
+        focal_length = (self.lookfrom - self.lookat).mag
+        theta = math.radians(self.vertical_fov)
+        h = math.tan(theta / 2)
+        viewport_height = 2 * h * focal_length
         viewport_width = viewport_height * (self.image_width / self.__image_height)
 
+        # Calculate the basis unit vectors for the camera coordinate frame
+        self.__w = (self.lookfrom - self.lookat).unit
+        self.__u = Vector3.cross(self.up_direction, self.__w).unit
+        self.__v = Vector3.cross(self.__w, self.__u)
+
         # Calculate the vectors across the horizontal and down the vertical viewport edges
-        viewport_u = Vector3(viewport_width, 0, 0)
-        viewport_v = Vector3(0, -viewport_height, 0)
+        viewport_u = viewport_width * self.__u
+        viewport_v = viewport_height * -self.__v
 
         # Calculate the horizontal and vertical delta vectors from pixel to pixel
         self.__pixel_delta_u = viewport_u / self.image_width
@@ -94,10 +109,7 @@ class Camera:
 
         # Calculate the location of the upper left pixel
         viewport_upper_left = (
-            self.__center
-            - Vector3(0, 0, focal_length)
-            - viewport_u / 2
-            - viewport_v / 2
+            self.__center - (focal_length * self.__w) - viewport_u / 2 - viewport_v / 2
         )
         self.__pixel00_location = viewport_upper_left + 0.5 * (
             self.__pixel_delta_u + self.__pixel_delta_v

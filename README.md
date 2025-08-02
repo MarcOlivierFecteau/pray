@@ -1,6 +1,6 @@
 # pray - Python raytracer
 
-"[Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html)" implemented in Python using only built-in libraries. Pray for patience more than hope.
+"[Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html)" implemented in Python using only built-in libraries. As the saying goes: "no NumPy, no speed". Pray for patience, because this program requires a lot of it.
 
 Result so far:
 

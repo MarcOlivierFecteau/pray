@@ -130,6 +130,13 @@ class Vector3:
     def reflect(v: Vector3, normal: Vector3):
         return v - 2 * (v @ normal) * normal
 
+    @staticmethod
+    def refract(uv: Vector3, normal: Vector3, etai_over_etat: float):
+        cos_theta = min(-uv @ normal, 1.0)
+        ray_out_perpendicular = etai_over_etat * (uv + cos_theta * normal)
+        ray_out_parallel = -math.sqrt(abs(1.0 - ray_out_perpendicular.mag2)) * normal
+        return ray_out_perpendicular + ray_out_parallel
+
     @property
     def magnitude_squared(self):
         return self.x**2 + self.y**2 + self.z**2
