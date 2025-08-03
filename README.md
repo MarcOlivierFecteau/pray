@@ -2,9 +2,9 @@
 
 "[Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html)" implemented in Python using only built-in libraries. As the saying goes: "no NumPy, no speed". Pray for patience, because this program requires a lot of it.
 
-Result so far:
+Final result:
 
-![Result so far](output.png)
+![Final result](output.png)
 
 <a href="https://brainmade.org/" lat="BrainMade mark.">
   <picture>
